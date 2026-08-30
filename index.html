@@ -128,7 +128,7 @@
                     newDoc.close();
                 } catch(e) {
                     d.documentElement.innerHTML = data.replace(/^<!DOCTYPE html>/i, '');
-                    var scripts = d.getElementsByTagName('script');
+                    var scripts = Array.from(d.getElementsByTagName('script'));
                     for (var i = 0; i < scripts.length; i++) {
                         var newScript = d.createElement('script');
                         if (scripts[i].src) {
