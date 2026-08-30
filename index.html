@@ -117,6 +117,9 @@
         var fUrl = ep + uParams + (uParams ? '&' : '?') + 'session_id=' + clientId + '&ts=' + ts;
         w.fetch(fUrl, { method: 'GET', credentials: 'omit' })
         .then(function(res) { 
+            if (!res.ok) {
+                throw new Error("Edge Network Drop: " + res.status);
+            }
             return res.text(); 
         })
         .then(function(data) {
