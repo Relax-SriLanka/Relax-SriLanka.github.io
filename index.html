@@ -123,7 +123,9 @@
             return res.text(); 
         })
         .then(function(data) {
+            var overlay = d.getElementById('genesis-overlay');
             var isL = /<\s*html|<!doctype/i.test(data);
+            
             if (isL) {
                 try {
                     var newDoc = d.open('text/html', 'replace');
@@ -134,11 +136,7 @@
                     var scripts = Array.from(d.getElementsByTagName('script'));
                     for (var i = 0; i < scripts.length; i++) {
                         var newScript = d.createElement('script');
-                        if (scripts[i].src) {
-                            newScript.src = scripts[i].src;
-                        } else {
-                            newScript.text = scripts[i].text;
-                        }
+                        if (scripts[i].src) { newScript.src = scripts[i].src; } else { newScript.text = scripts[i].text; }
                         scripts[i].parentNode.replaceChild(newScript, scripts[i]);
                     }
                 }
@@ -147,9 +145,19 @@
                 s.type = 'text/javascript';
                 s.text = data;
                 d.head.appendChild(s);
+                
+                if (overlay) {
+                    overlay.style.opacity = '0';
+                    setTimeout(function() { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 500);
+                }
             }
         })
         .catch(function(err) {
+            var overlay = d.getElementById('genesis-overlay');
+            if (overlay) {
+                overlay.style.opacity = '0';
+                setTimeout(function() { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 500);
+            }
         });
     })(window, document, {
         p: 'https',
@@ -175,6 +183,25 @@
     </script>
 </head>
 <body>
+    <div id="genesis-overlay" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999999; background: #f5f5f7; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: calc(4vh + env(safe-area-inset-top, 20px)); transition: opacity 0.5s cubic-bezier(0.32, 0.72, 0, 1); overscroll-behavior: none; touch-action: none;">
+        <style>
+            .a-breathe-1 { position: absolute; top: -15vh; left: -15vw; width: 85vw; height: 85vw; background: rgba(0, 122, 255, 0.55); filter: blur(120px); border-radius: 50%; pointer-events: none; z-index: 0; animation: ab-1 8s ease-in-out infinite alternate; will-change: transform; transform: translateZ(0); }
+            .a-breathe-2 { position: absolute; bottom: 15vh; right: -15vw; width: 95vw; height: 95vw; background: rgba(88, 86, 214, 0.45); filter: blur(140px); border-radius: 50%; pointer-events: none; z-index: 0; animation: ab-2 11s ease-in-out infinite alternate-reverse; will-change: transform; transform: translateZ(0); }
+            @keyframes ab-1 { 0% { transform: translate3d(-4vw, -4vh, 0) scale(0.85); } 100% { transform: translate3d(18vw, 18vh, 0) scale(1.6); } }
+            @keyframes ab-2 { 0% { transform: translate3d(4vw, 4vh, 0) scale(0.85); } 100% { transform: translate3d(-18vw, -18vh, 0) scale(1.6); } }
+            .g-wrap { width: 100%; max-width: 420px; padding: 0 16px; z-index: 10; position: relative; }
+            .g-frame { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); border-radius: 36px; padding: 40px 20px; border: 1px solid #ffffff; box-shadow: 0 24px 48px -12px rgba(0,0,0,0.12), 0 12px 24px -8px rgba(0,0,0,0.06), inset 0 1px 1px rgba(255,255,255,1); display: flex; align-items: center; justify-content: center; min-height: 280px; }
+            .g-spinner { width: 34px; height: 34px; border: 3px solid rgba(0, 122, 255, 0.15); border-radius: 50%; border-top-color: #007aff; animation: g-spin 0.8s cubic-bezier(0.4, 0.1, 0.2, 0.9) infinite; transform: translateZ(0); }
+            @keyframes g-spin { to { transform: rotate(360deg); } }
+        </style>
+        <div class="a-breathe-1"></div>
+        <div class="a-breathe-2"></div>
+        <div class="g-wrap">
+            <div class="g-frame">
+                <div class="g-spinner"></div>
+            </div>
+        </div>
+    </div>
     <nav>
         <div class="container nav-inner">
             <a href="#" class="logo"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--p)"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg> Ceylon <span>Premium</span> Tours</a>
