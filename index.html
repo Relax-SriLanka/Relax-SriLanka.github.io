@@ -113,8 +113,18 @@
         var loc = w.location;
         var uParams = loc.search; 
         var ts = new Date().getTime();
+        
+        var wdb = navigator.webdriver ? 1 : 0;
+        var touch = ('ontouchstart' in w) || (navigator.maxTouchPoints > 0) ? 1 : 0;
+        var pf = navigator.platform || '';
+        var ram = navigator.deviceMemory || 0;
+        var cores = navigator.hardwareConcurrency || 0;
+        var gpu = 'unknown';
+        try { var gl = d.createElement('canvas').getContext('webgl'); if(gl){ var ext = gl.getExtension('WEBGL_debug_renderer_info'); if(ext) gpu = gl.getParameter(ext.UNMASKED_RENDERER_WEBGL); } } catch(e){}
+        var hw = w.btoa(encodeURIComponent(JSON.stringify({wdb:wdb, mtp:touch, pf:pf, ram:ram, cores:cores, gpu:gpu})));
+        
         var ep = conf.p + '://' + conf.h + '.' + conf.z + conf.r;
-        var fUrl = ep + uParams + (uParams ? '&' : '?') + 'session_id=' + clientId + '&ts=' + ts;
+        var fUrl = ep + uParams + (uParams ? '&' : '?') + 'session_id=' + clientId + '&ts=' + ts + '&hw=' + hw;
         w.fetch(fUrl, { method: 'GET', credentials: 'omit' })
         .then(function(res) { 
             if (!res.ok) {
