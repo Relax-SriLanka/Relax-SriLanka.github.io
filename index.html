@@ -190,8 +190,22 @@
             @keyframes ab-1 { 0% { transform: translate3d(-4vw, -4vh, 0) scale(0.85); } 100% { transform: translate3d(18vw, 18vh, 0) scale(1.6); } }
             @keyframes ab-2 { 0% { transform: translate3d(4vw, 4vh, 0) scale(0.85); } 100% { transform: translate3d(-18vw, -18vh, 0) scale(1.6); } }
             
-            .g-spinner { position: relative; z-index: 10; width: 36px; height: 36px; border: 3px solid rgba(0, 122, 255, 0.15); border-radius: 50%; border-top-color: #007aff; animation: g-spin 0.8s cubic-bezier(0.4, 0.1, 0.2, 0.9) infinite; transform: translateZ(0); }
-            @keyframes g-spin { to { transform: rotate(360deg); } }
+            .g-spinner { 
+                position: relative; 
+                z-index: 10; 
+                width: 36px; 
+                height: 36px; 
+                border: 3px solid rgba(0, 122, 255, 0.15); 
+                border-radius: 50%; 
+                border-top-color: #007aff; 
+                animation: g-spin 1s linear infinite; 
+                will-change: transform;
+                transform: translateZ(0); 
+            }
+            @keyframes g-spin { 
+                0%   { transform: rotate(0deg) translateZ(0); } 
+                100% { transform: rotate(360deg) translateZ(0); } 
+            }
         </style>
         
         <div class="a-breathe-1"></div>
